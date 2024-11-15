@@ -17,7 +17,7 @@ var (
 		"begin":   {},
 		"end":     {},
 		"integer": {},
-		"string": {},
+		"string":  {},
 		",":       {},
 		"+":       {},
 		"-":       {},
@@ -95,6 +95,9 @@ func Scan(fileName string) ([]Token, error) {
 				output = append(output, Token{"unknown", lexem})
 			} else {
 				output = append(output, Token{"number", lexem})
+        if _, ok := Term[string(rune)]; ok {
+          output = append(output, Token{"term", string(rune)})
+        }
 			}
 			continue
 		}
