@@ -38,10 +38,10 @@ func parseProgram(iterator *scanner.TokenIterator) string {
 	fileWriter = bufio.NewWriter(file)
 
 	programHeader(iterator)
-	// Q: Should this part be in definitions?
 
+	// Q: Should this part be in definitions?
 	fileWriter.Write([]byte(".data\n"))
-	if ok, token := iterator.Next(); ok && token.Value == "var" {
+	if iterator.ViewNext().Value == "var" {
 		variableDefinitions(iterator)
 	}
 	return targetTransaltion
@@ -65,9 +65,13 @@ func programHeader(iterator *scanner.TokenIterator) {
 }
 
 func variableDefinitions(iterator *scanner.TokenIterator) {
-	for iterator.ViewNext().Value != "begin" {
-		variableSequence(iterator)
-	}
+	if ok, token := iterator.Next(); ok && token.Value == "var" {
+    for iterator.ViewNext().Value != "begin" {
+			variableSequence(iterator)
+		}
+	} else {
+    panic("Invalide start of variable defintion. Expected 'var'")
+  }
 }
 
 // Refactor the whole method
@@ -76,9 +80,9 @@ func variableSequence(iterator *scanner.TokenIterator) {
 	variables := make(map[string]string)
 	if ok, token := iterator.Next(); ok && token.Category == "ident" {
 		if _, ok := symbolTable[token.Value]; !ok {
-			variables[programName + "_" + token.Value] = "undefined"
+			variables[programName+"_"+token.Value] = "undefined"
 		} else {
-			panic(fmt.Sprint("Duplicate identifier"))
+      panic(fmt.Sprint("Duplicate identifier :" + token.Value))
 		}
 	} else {
 		panic(fmt.Sprint("Invalid variable declaration"))
@@ -89,7 +93,7 @@ func variableSequence(iterator *scanner.TokenIterator) {
 	for ; ok && token.Category == "term" && token.Value == ","; ok, token = iterator.Next() {
 		if ok, token := iterator.Next(); ok && token.Category == "ident" {
 			if _, ok := symbolTable[token.Value]; !ok {
-				variables[programName + "_" + token.Value] = "undefined"
+				variables[programName+"_"+token.Value] = "undefined"
 			} else {
 				panic(fmt.Sprint("Duplicate identifier"))
 			}
@@ -114,5 +118,5 @@ func variableSequence(iterator *scanner.TokenIterator) {
 		}
 	}
 
-  generator.GenerateVariables(variables, fileWriter)
+	generator.GenerateVariables(variables, fileWriter)
 }
