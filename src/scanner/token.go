@@ -14,13 +14,13 @@ func NewTokenIterator(tokens []Token) *TokenIterator {
 	return &TokenIterator{tokens, 0}
 }
 
-func (iter *TokenIterator) Next() (bool, *Token) {
+func (iter *TokenIterator) Next() (*Token, bool) {
 	if iter.HasMore() {
 		next := &iter.slice[iter.index]
 		iter.index++
-		return true, next
+		return next, true
 	}
-	return false, nil
+	return nil, false
 }
 
 func (iter *TokenIterator) ViewNext() *Token {
