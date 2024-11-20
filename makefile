@@ -1,7 +1,7 @@
-COMPILER = ./compiler
+COMPILER = ./seraph
 
 all:
-	go build src/main.go
+	go build -o seraph src/main.go
 
 test:
 	$(COMPILER) test.pas

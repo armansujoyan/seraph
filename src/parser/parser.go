@@ -51,26 +51,30 @@ func parseProgram(iterator *scanner.TokenIterator) {
 	if token, ok := iterator.Next(); ok && token.Value == "begin" {
 		fileWriter.Write([]byte(".section text\n"))
 		fileWriter.Write([]byte(".global _start\n"))
-		parseStatementSequence(iterator)
+		for iterator.ViewNext().Value != "end" {
+			parseStatementSequence(iterator)
+		}
 	} else {
 		panic("Invalid program begin")
 	}
+
+  parseProgramEnd(iterator);
 }
 
 func parseProgramHeader(iterator *scanner.TokenIterator) {
 	if token, ok := iterator.Next(); !ok || token.Category != "term" || token.Value != "program" {
-		panic(fmt.Sprint("Invalid program header"))
+		panic("Invalid program header")
 	}
 
 	if token, ok := iterator.Next(); ok && token.Category == "ident" {
 		symbolTable[token.Value] = "programHeader"
 		programName = token.Value
 	} else {
-		panic(fmt.Sprint("Invalid program header"))
+		panic("Invalid program header")
 	}
 
 	if token, ok := iterator.Next(); !ok || token.Category != "term" || token.Value != ";" {
-		panic(fmt.Sprint("Invalid program header"))
+		panic("Invalid program header")
 	}
 }
 
@@ -92,7 +96,7 @@ func parseVariableSequence(iterator *scanner.TokenIterator) {
 		if token.Value == programName {
 			panic(fmt.Sprint("Variable name cannot be the same as program name"))
 		}
-		if _, ok := symbolTable[token.Value]; !ok {
+		if ok := validateIdentifier(token.Value); !ok {
 			variables[programName+"_"+token.Value] = "undefined"
 		} else {
 			panic(fmt.Sprint("Duplicate identifier :" + token.Value))
@@ -136,46 +140,68 @@ func parseVariableSequence(iterator *scanner.TokenIterator) {
 
 func parseStatementSequence(iterator *scanner.TokenIterator) {
 	targetIdent, _ := iterator.Next()
-	parseIdentifier(targetIdent, symbolTable)
+	parseIdentifier(targetIdent)
 	if assignmentExpr, ok := iterator.Next(); assignmentExpr.Value != ":=" || !ok {
 		panic("Invalid statement")
 	}
 	operand, _ := iterator.Next()
-	parseOperand(operand, symbolTable)
+	parseOperand(operand)
 
 	if iterator.ViewNext().Value != ";" {
 		mathOperation, _ := iterator.Next()
 		if !slices.Contains(mathOperands, mathOperation.Value) {
-			panic("Invalid operator" + mathOperation.Value)
+			panic("Invalid operator: " + mathOperation.Value)
 		}
 		operandTwo, _ := iterator.Next()
-		parseOperand(operandTwo, symbolTable)
-		// generator.GenerateComplexStatement(targetIdent, operand, mathOperation, operandTwo);
+		parseOperand(operandTwo)
+		generator.GenerateComplexStatement(targetIdent, operand, mathOperation, operandTwo, fileWriter)
+		iterator.Next()
 	} else {
 		iterator.Next()
 		generator.GenerateStatement(targetIdent, operand, fileWriter)
 	}
 }
 
-func parseOperand(operand *scanner.Token, symbolTable map[string]string) {
+func parseProgramEnd(iterator *scanner.TokenIterator) {
+	if token, ok := iterator.Next(); !ok || token.Category != "term" || token.Value != "end" {
+		panic("Invalid program header")
+	}
+
+	if token, ok := iterator.Next(); !ok || token.Category != "term" || token.Value != "." {
+		panic("Invalid program header")
+	}
+
+  generator.GenerateProgramEnd(fileWriter)
+}
+
+func parseOperand(operand *scanner.Token) {
 	if operand.Category == "ident" {
-		modularizeToken(operand)
-		if _, ok := symbolTable[operand.Value]; !ok {
-			panic("Invalid identifier" + operand.Value)
+		if ok := validateIdentifier(operand.Value); !ok {
+			panic("Invalid identifier: " + operand.Value)
 		}
+    modularizeToken(operand);
 	} else if operand.Category != "number" {
 		panic("Invalid operand, expected number")
 	}
 }
 
-func parseIdentifier(ident *scanner.Token, symbolTable map[string]string) {
-	modularizeToken(ident)
-	if _, ok := symbolTable[ident.Value]; !ok || ident.Category != "ident" {
-		fmt.Println(ok)
+func parseIdentifier(ident *scanner.Token) {
+	if ok := validateIdentifier(ident.Value); !ok || ident.Category != "ident" {
 		panic("Invalid identifier: " + ident.Value)
 	}
+  modularizeToken(ident)
 }
 
+func validateIdentifier(identifier string) bool {
+	_, ok := symbolTable[programName+"_"+identifier]
+	return ok
+}
+
+func getVariableFromToken(token *scanner.Token) string {
+	return programName + "_" + token.Value
+}
+
+// TODO: Remove this, it is a bad idea
 func modularizeToken(token *scanner.Token) {
-	token.Value = programName + "_" + token.Value
+  token.Value = programName + "_" + token.Value
 }
