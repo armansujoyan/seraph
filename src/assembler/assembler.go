@@ -21,7 +21,14 @@ func AssembleExecutable(src string) error {
     return err
   }
 
-  err = os.RemoveAll("out.*")
+  // TODO: This will change to include custom names
+  // based on input file name
+  err = os.Remove("./out.s")
+  if err != nil {
+    return err
+  }
+
+  err = os.Remove("./out.o")
   if err != nil {
     return err
   }
