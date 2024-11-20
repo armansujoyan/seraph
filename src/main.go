@@ -36,7 +36,7 @@ func main() {
 	parser.Parse(tokenIterator)
 
   // TODO: Default to filename.s
-  err = assembler.Assemble("out.s")
+  err = assembler.AssembleExecutable("out.s")
   if err != nil {
     fmt.Fprintln(os.Stderr, err)
     os.Exit(1)
