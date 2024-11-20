@@ -2,9 +2,9 @@ package scanner
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
-	"os"
 	"seraph/src/utils"
 )
 
@@ -28,35 +28,21 @@ var (
 	}
 )
 
-func Scan(fileName string) ([]Token, error) {
-	_, err := os.Stat(fileName)
-	if err != nil {
-		if os.IsNotExist(err) {
-			log.Fatal("File does not exist")
-		}
-	}
-
-	file, err := os.Open(fileName)
-	if err != nil {
-		log.Fatal("Unable to read the file")
-	}
-	defer file.Close()
-
-	bufferedReader := bufio.NewReader(file)
+func Scan(reader *bufio.Reader) ([]Token, error) {
 	output := make([]Token, 0)
 
 	for {
-		rune, _, err := bufferedReader.ReadRune()
+		rune, _, err := reader.ReadRune()
 
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			log.Fatal("Unable to read next character", err)
+      return nil, fmt.Errorf("Unable to read next character: %w", err)
 		}
 
 		if utils.IsCharacter(rune) {
 			lexem := ""
-			for ; utils.IsCharacter(rune) || utils.IsDigit(rune); rune, _, err = bufferedReader.ReadRune() {
+			for ; utils.IsCharacter(rune) || utils.IsDigit(rune); rune, _, err = reader.ReadRune() {
 				if len(lexem) > max_identifier_size {
 					log.Fatal("Max token size exceeded")
 				}
@@ -78,7 +64,7 @@ func Scan(fileName string) ([]Token, error) {
 
 		if utils.IsDigit(rune) {
 			lexem := ""
-			for ; utils.IsDigit(rune); rune, _, err = bufferedReader.ReadRune() {
+			for ; utils.IsDigit(rune); rune, _, err = reader.ReadRune() {
 				if len(lexem) > max_identifier_size {
 					log.Fatal("Max token size exceeded")
 				}
@@ -103,7 +89,7 @@ func Scan(fileName string) ([]Token, error) {
 		}
 
 		if rune == ':' {
-			rune, _, _ := bufferedReader.ReadRune()
+			rune, _, _ := reader.ReadRune()
 			if rune == '=' {
 				output = append(output, Token{"term", ":="})
 			} else {
