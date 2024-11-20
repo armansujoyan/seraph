@@ -56,7 +56,7 @@ func performArithmeticOperation(reg1, reg2 string, operator *scanner.Token) stri
 	if operator.Value == "+" {
 		return "  addl %" + reg1 + ", %" + reg2
 	} else {
-		return "  imul %" + reg1 + ", %" + reg2
+		return "  subl %" + reg1 + ", %" + reg2
 	}
 }
 
