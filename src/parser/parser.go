@@ -179,6 +179,9 @@ func parseOperand(operand *scanner.Token) {
 		if ok := validateIdentifier(operand.Value); !ok {
 			panic("Invalid identifier: " + operand.Value)
 		}
+    if symbolTable[operand.Value] != "integer" {
+      panic("Invalid identifier type: " + symbolTable[operand.Value])
+    }
     modularizeToken(operand);
 	} else if operand.Category != "number" {
 		panic("Invalid operand, expected number")
