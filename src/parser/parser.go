@@ -6,7 +6,7 @@ import (
 	"os"
 	"seraph/src/generator"
 	"seraph/src/scanner"
-	"slices"
+	"seraph/src/utils"
 )
 
 type SymbolTable = map[string]string
@@ -149,7 +149,7 @@ func parseStatementSequence(iterator *scanner.TokenIterator) {
 
 	if iterator.ViewNext().Value != ";" {
 		mathOperation, _ := iterator.Next()
-		if !slices.Contains(mathOperands, mathOperation.Value) {
+		if !utils.Contains(mathOperands, mathOperation.Value) {
 			panic("Invalid operator: " + mathOperation.Value)
 		}
 		operandTwo, _ := iterator.Next()
