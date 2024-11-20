@@ -43,14 +43,14 @@ func parseProgram(iterator *scanner.TokenIterator) {
 	parseProgramHeader(iterator)
 
 	// Q: Should this part be in definitions?
-	fileWriter.Write([]byte(".data\n"))
+	fileWriter.Write([]byte(".section .bss\n"))
 	if iterator.ViewNext().Value == "var" {
 		parseVariableDefinitions(iterator)
 	}
 
 	if token, ok := iterator.Next(); ok && token.Value == "begin" {
-		fileWriter.Write([]byte(".section text\n"))
-		fileWriter.Write([]byte(".global _start\n"))
+		fileWriter.Write([]byte(".section .text\n"))
+    fileWriter.Write([]byte("  .globl _start\n_start:\n"))
 		for iterator.ViewNext().Value != "end" {
 			parseStatementSequence(iterator)
 		}

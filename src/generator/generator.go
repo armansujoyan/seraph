@@ -45,7 +45,7 @@ func GenerateProgramEnd(writer *bufio.Writer) {
 
 // TODO: Generalize to handle reg to reg?
 func move(loc1 *scanner.Token, loc2 string) string {
-	t1 := "%" + loc1.Value
+	t1 := "$" + loc1.Value
 	if loc1.Category != "number" {
 		t1 = loc1.Value
 	}
