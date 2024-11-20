@@ -155,10 +155,14 @@ func parseStatementSequence(iterator *scanner.TokenIterator) {
 		operandTwo, _ := iterator.Next()
 		parseOperand(operandTwo)
 		generator.GenerateComplexStatement(targetIdent, operand, mathOperation, operandTwo, fileWriter)
-		iterator.Next()
+    if closingToken, ok := iterator.Next(); closingToken.Value != ";" || !ok {
+      panic("Invalid token: expectd ; got " + closingToken.Value)
+    }
 	} else {
-		iterator.Next()
 		generator.GenerateStatement(targetIdent, operand, fileWriter)
+    if closingToken, ok := iterator.Next(); closingToken.Value != ";" || !ok {
+      panic("Invalid token: expectd ; got " + closingToken.Value)
+    }
 	}
 }
 
@@ -179,10 +183,10 @@ func parseOperand(operand *scanner.Token) {
 		if ok := validateIdentifier(operand.Value); !ok {
 			panic("Invalid identifier: " + operand.Value)
 		}
-    if symbolTable[operand.Value] != "integer" {
-      panic("Invalid identifier type: " + symbolTable[operand.Value])
-    }
     modularizeToken(operand);
+    if symbolTable[operand.Value] != "integer" {
+      panic("Invalid identifier type: " + operand.Value)
+    }
 	} else if operand.Category != "number" {
 		panic("Invalid operand, expected number")
 	}
