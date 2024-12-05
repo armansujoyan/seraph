@@ -2,20 +2,44 @@ package generator
 
 import (
 	"bufio"
+	"os"
 	"seraph/src/scanner"
 	"strings"
 )
 
-func GenerateVariables(variables map[string]string, writer *bufio.Writer) {
-	for key := range variables {
-		declaration := "  .lcomm " + key + ", 4\n"
+var (
+	writer *bufio.Writer
+)
+
+func Init(name string) {
+	file, err := os.Create("./" + name + ".s")
+	if err != nil {
+		panic("Unable to create file")
+	}
+	writer = bufio.NewWriter(file)
+}
+
+func GenerateGlobalVarSection() {
+	writer.Write([]byte(".section .bss\n"))
+  writer.Flush()
+}
+
+func GenerateTextSection() {
+	writer.Write([]byte(".section .text\n"))
+	writer.Write([]byte("  .globl _start\n_start:\n"))
+  writer.Flush()
+}
+
+func GenerateVariables(variables map[string]string) {
+	for variable := range variables {
+		declaration := "  .lcomm " + variable + ", 4\n"
 		writer.Write([]byte(declaration))
 	}
 	writer.Flush()
 }
 
 // TODO: Refactor
-func GenerateComplexStatement(targetIdent, operand, operator, operandTwo *scanner.Token, writer *bufio.Writer) {
+func GenerateComplexStatement(targetIdent, operand, operator, operandTwo *scanner.Token) {
 	loadOperandOne := move(operand, "eax")
 	loadOperandTwo := move(operandTwo, "ebx")
 	executeOperation := performArithmeticOperation("eax", "ebx", operator)
@@ -25,7 +49,7 @@ func GenerateComplexStatement(targetIdent, operand, operator, operandTwo *scanne
 	writer.Flush()
 }
 
-func GenerateStatement(targetIdent, operand *scanner.Token, writer *bufio.Writer) {
+func GenerateStatement(targetIdent, operand *scanner.Token) {
 	loadOperand := move(operand, "eax")
 	storeOperation := storeRegister("eax", targetIdent.Value)
 	statement := []string{loadOperand, storeOperation, "\n"}
@@ -33,7 +57,7 @@ func GenerateStatement(targetIdent, operand *scanner.Token, writer *bufio.Writer
 	writer.Flush()
 }
 
-func GenerateProgramEnd(writer *bufio.Writer) {
+func GenerateProgramEnd() {
 	returnStatement := `
   mov $60, %rax
   xor %rdi, %rdi

@@ -1,214 +1,339 @@
 package parser
 
 import (
-	"bufio"
+	"errors"
 	"fmt"
-	"os"
 	"seraph/src/generator"
 	"seraph/src/scanner"
-	"seraph/src/utils"
 )
 
-type SymbolTable = map[string]string
-
-var (
-	mathOperands = []string{"+", "-"}
-)
-
-var (
-	programName string
-	symbolTable = make(SymbolTable)
-	fileWriter  *bufio.Writer
-)
-
-// TODO: Remove the concrete iterator
-func Parse(iterator *scanner.TokenIterator) {
-	parseProgram(iterator)
-	defer func() {
-		if err := recover(); err != nil {
-			fmt.Println("Parser error")
-		}
-	}()
+type Symbol struct {
+	TypeDef   string
+	IsDefined bool
+	Value     string
 }
 
-// TODO: Create buffer and strat writing to file
-func parseProgram(iterator *scanner.TokenIterator) {
-	file, err := os.Create("./out.s")
-	defer file.Close()
+type VariableDefintion struct {
+	Name   string
+	Symbol *Symbol
+}
+
+type ParserError struct {
+	message string
+	row     int
+	column  int
+}
+
+func (err *ParserError) Error() string {
+	return fmt.Sprintf("Parser error: %s at %d, %d", err.message, err.row, err.column)
+}
+
+// TODO: Add position
+func NewParserError(msg string, token scanner.Token) error {
+	return &ParserError{msg, token.Row, token.Column}
+}
+
+type SymbolTable = map[string]*Symbol
+
+var (
+	moduleName   string
+	mathOperands = []scanner.Token{scanner.PlusToken, scanner.MinusToken}
+	symbolTable  = make(SymbolTable)
+)
+
+// TODO: Maybe the iterator interface has to be different
+// TODO: Maybe I need linked lists with handlers in it?
+func Parse(iterator *scanner.TokenIterator) (string, error) {
+	moduleSymbol, err := parseProgramHeader(iterator)
 	if err != nil {
-		panic("Unable to create file")
+		return "", fmt.Errorf("Error parsing program header: %w", err)
 	}
-	fileWriter = bufio.NewWriter(file)
+	symbolTable[moduleSymbol.Value] = &moduleSymbol
+	moduleName = moduleSymbol.Value
+	generator.Init(moduleSymbol.Value)
 
-	parseProgramHeader(iterator)
-
-	// Q: Should this part be in definitions?
-	fileWriter.Write([]byte(".section .bss\n"))
-	if iterator.ViewNext().Value == "var" {
-		parseVariableDefinitions(iterator)
-	}
-
-	if token, ok := iterator.Next(); ok && token.Value == "begin" {
-		fileWriter.Write([]byte(".section .text\n"))
-    fileWriter.Write([]byte("  .globl _start\n_start:\n"))
-		for iterator.ViewNext().Value != "end" {
-			parseStatementSequence(iterator)
+	nextToken, err := iterator.ViewNext()
+	if err == nil && nextToken.IsEqual(scanner.VarToken) {
+		generator.GenerateGlobalVarSection()
+		err := parseVariableDefinitions(iterator)
+		if err != nil {
+			return "", fmt.Errorf("Error parsing variable definitions: %w", err)
 		}
+	}
+
+	token, err := iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return "", NewParserError("Expected 'begin'", token)
+	}
+
+	if !token.IsEqual(scanner.BeginToken) {
+		return "", NewParserError("Expected 'begin' found "+token.Value, token)
+	}
+
+	generator.GenerateTextSection()
+	for {
+		nextToken, err := iterator.ViewNext()
+		if err != nil || nextToken.IsEqual(scanner.EndToken) {
+			break
+		}
+		parseStatementSequence(iterator)
+	}
+
+	parseProgramEnd(iterator)
+
+	return moduleName, nil
+}
+
+func parseProgramHeader(iterator *scanner.TokenIterator) (Symbol, error) {
+	ProgramNameSymbol := Symbol{}
+	token, err := iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return ProgramNameSymbol, NewParserError("Expected program header", token)
+	}
+
+	if !token.IsEqual(scanner.ProgramToken) {
+		return ProgramNameSymbol, NewParserError("Expected program header, found "+token.Value, token)
+	}
+
+	token, err = iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return ProgramNameSymbol, NewParserError("Expected identfier", token)
+	}
+
+	if token.Category != "ident" {
+		return ProgramNameSymbol, NewParserError("Expected identifier found "+token.Category, token)
 	} else {
-		panic("Invalid program begin")
+		ProgramNameSymbol = Symbol{TypeDef: "moduleName", IsDefined: true, Value: token.Value}
 	}
 
-  parseProgramEnd(iterator);
+	token, err = iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return ProgramNameSymbol, NewParserError("Expected ';'", token)
+	}
+
+	if !token.IsEqual(scanner.SemicolonToken) {
+		return ProgramNameSymbol, NewParserError("Expected ';' found "+token.Value, token)
+	}
+
+	return ProgramNameSymbol, nil
 }
 
-func parseProgramHeader(iterator *scanner.TokenIterator) {
-	if token, ok := iterator.Next(); !ok || token.Category != "term" || token.Value != "program" {
-		panic("Invalid program header")
+func parseVariableDefinitions(iterator *scanner.TokenIterator) error {
+	token, err := iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return NewParserError("Expected 'var'", token)
 	}
 
-	if token, ok := iterator.Next(); ok && token.Category == "ident" {
-		symbolTable[token.Value] = "programHeader"
-		programName = token.Value
-	} else {
-		panic("Invalid program header")
+	if !token.IsEqual(scanner.VarToken) {
+		return NewParserError("Expected 'var' found "+token.Value, token)
 	}
 
-	if token, ok := iterator.Next(); !ok || token.Category != "term" || token.Value != ";" {
-		panic("Invalid program header")
-	}
-}
-
-func parseVariableDefinitions(iterator *scanner.TokenIterator) {
-	if token, ok := iterator.Next(); ok && token.Value == "var" {
-		for iterator.ViewNext().Value != "begin" {
-			parseVariableSequence(iterator)
+	for {
+		token, err := iterator.ViewNext()
+		if err != nil || token.IsEqual(scanner.BeginToken) {
+			break
 		}
-	} else {
-		panic("Invalide start of variable defintion. Expected 'var'")
-	}
-}
-
-// Refactor the whole method
-func parseVariableSequence(iterator *scanner.TokenIterator) {
-	// Parse variable identifier
-	variables := make(map[string]string)
-	if token, ok := iterator.Next(); ok && token.Category == "ident" {
-		if token.Value == programName {
-			panic(fmt.Sprint("Variable name cannot be the same as program name"))
-		}
-		if ok := validateIdentifier(token.Value); !ok {
-			variables[programName+"_"+token.Value] = "undefined"
-		} else {
-			panic(fmt.Sprint("Duplicate identifier :" + token.Value))
-		}
-	} else {
-		panic(fmt.Sprint("Invalid variable declaration"))
-	}
-
-	// One or more definition
-	token, ok := iterator.Next()
-	for ; ok && token.Category == "term" && token.Value == ","; token, ok = iterator.Next() {
-		if token, ok := iterator.Next(); ok && token.Category == "ident" {
-			if _, ok := symbolTable[token.Value]; !ok {
-				variables[programName+"_"+token.Value] = "undefined"
-			} else {
-				panic(fmt.Sprint("Duplicate identifier"))
-			}
-		} else {
-			panic(fmt.Sprint("Invalid variable declaration"))
+		err = parseVariableSequence(iterator)
+		if err != nil {
+			return err
 		}
 	}
 
-	// Get the type and assign to the variables
-	if token.Category == "term" && token.Value == ":" {
-		// TODO: Remove this mess
-		if t, ok := iterator.Next(); ok && t.Category == "term" && (t.Value == "integer" || t.Value == "string") {
-			for key := range variables {
-				variables[key] = t.Value
-				symbolTable[key] = t.Value
-			}
-		} else {
-			panic(fmt.Sprint("Invalid variable declaration"))
+	return nil
+}
+
+func parseVariableSequence(iterator *scanner.TokenIterator) error {
+	variables := make([]*VariableDefintion, 0)
+	variable, err := parseVariable(iterator)
+	variables = append(variables, variable)
+	if err != nil {
+		return fmt.Errorf("Unable to define variable : %w", err)
+	}
+
+	for {
+		token, err := iterator.ViewNext()
+		if errors.Is(err, scanner.ErrExhaustedInput) || token.IsEqual(scanner.ColonToken) {
+			break
 		}
-		if token, ok := iterator.Next(); !ok || token.Category != "term" || token.Value != ";" {
-			panic(fmt.Sprint("Invalid variable declaration"))
+
+		if !token.IsEqual(scanner.CommaToken) {
+			return NewParserError("Expected ',' found"+token.Value, token)
+		}
+
+		iterator.Next()
+		variable, err = parseVariable(iterator)
+		variables = append(variables, variable)
+		if err != nil {
+			return fmt.Errorf("Unable to define variable : %w", err)
 		}
 	}
 
-	generator.GenerateVariables(variables, fileWriter)
+	token, err := iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return NewParserError("Expected ':'", token)
+	}
+
+	if !token.IsEqual(scanner.ColonToken) {
+		return NewParserError("Expected ':' found "+token.Value, token)
+	}
+
+	token, err = iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return NewParserError("Expected variable type declaration", token)
+	}
+
+	if !token.IsEqual(scanner.IntegerToken) || token.IsEqual(scanner.StringToken) {
+		return NewParserError("Expected 'integer' or 'string' found "+token.Value, token)
+	}
+
+	variablesTypeMap := make(map[string]string)
+	for _, varDef := range variables {
+		symbolTable[varDef.Name] = varDef.Symbol
+		variablesTypeMap[varDef.Name] = varDef.Symbol.TypeDef
+	}
+
+	token, err = iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return NewParserError("Expected ';'", token)
+	}
+
+	if !token.IsEqual(scanner.SemicolonToken) {
+		return NewParserError("Expected ';' found "+token.Value, token)
+	}
+
+	generator.GenerateVariables(variablesTypeMap)
+	return nil
 }
 
-func parseStatementSequence(iterator *scanner.TokenIterator) {
-	targetIdent, _ := iterator.Next()
-	parseIdentifier(targetIdent)
-	if assignmentExpr, ok := iterator.Next(); assignmentExpr.Value != ":=" || !ok {
-		panic("Invalid statement")
+func parseStatementSequence(iterator *scanner.TokenIterator) error {
+	token, err := iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return NewParserError("Expected identifier", token)
 	}
-	operand, _ := iterator.Next()
-	parseOperand(operand)
 
-	if iterator.ViewNext().Value != ";" {
-		mathOperation, _ := iterator.Next()
-		if !utils.Contains(mathOperands, mathOperation.Value) {
-			panic("Invalid operator: " + mathOperation.Value)
+	if token.Category != "ident" {
+		return NewParserError("Expected identifier found "+token.Value, token)
+	}
+
+	_, isListed := symbolTable[modularizeIdentifer(token.Value)]
+	if !isListed {
+		return NewParserError("Unknown identifier: "+token.Value, token)
+	}
+
+	target := token
+
+	token, err = iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return NewParserError("Expected ':='", token)
+	}
+
+	if !token.IsEqual(scanner.AssignmentToken) {
+		return NewParserError("Expected identifier found "+token.Value, token)
+	}
+
+	operand, err := parseOperand(iterator)
+
+	token, err = iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return NewParserError("Expected operator or ';'", token)
+	}
+
+	if token.IsEqual(scanner.SemicolonToken) {
+		generator.GenerateStatement(&target, &operand)
+		return nil
+	}
+
+	// Parse + or -
+	if !token.IsEqual(scanner.PlusToken) && !token.IsEqual(scanner.MinusToken) {
+		return NewParserError("Expected operator found "+token.Value, token)
+	}
+
+	operator := token
+
+	// Parse complex
+	operand_two, err := parseOperand(iterator)
+	generator.GenerateComplexStatement(&target, &operand, &operator, &operand_two)
+
+	// Scan last semicolon
+	token, err = iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return NewParserError("Expected ';'", token)
+	}
+
+	if token.IsEqual(scanner.SemicolonToken) {
+		return NewParserError("Expected ';' found "+token.Value, token)
+	}
+
+	return nil
+}
+
+func parseProgramEnd(iterator *scanner.TokenIterator) error {
+	token, err := iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return NewParserError("Expected end", token)
+	}
+
+	if !token.IsEqual(scanner.EndToken) {
+		return NewParserError("Expected end found "+token.Value, token)
+	}
+	//
+
+	token, err = iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return NewParserError("Expected .", token)
+	}
+
+	if !token.IsEqual(scanner.DotToken) {
+		return NewParserError("Expected .", token)
+	}
+
+	generator.GenerateProgramEnd()
+	return nil
+}
+
+func parseOperand(iterator *scanner.TokenIterator) (scanner.Token, error) {
+	token, err := iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return scanner.Token{}, NewParserError("Expected identifier or number", token)
+	}
+
+	switch token.Category {
+	case "ident":
+		sym, isPresent := symbolTable[modularizeIdentifer(token.Value)]
+		if !isPresent {
+			return scanner.Token{}, NewParserError("Unknown identifier: "+token.Value, token)
 		}
-		operandTwo, _ := iterator.Next()
-		parseOperand(operandTwo)
-		generator.GenerateComplexStatement(targetIdent, operand, mathOperation, operandTwo, fileWriter)
-    if closingToken, ok := iterator.Next(); closingToken.Value != ";" || !ok {
-      panic("Invalid token: expectd ; got " + closingToken.Value)
-    }
-	} else {
-		generator.GenerateStatement(targetIdent, operand, fileWriter)
-    if closingToken, ok := iterator.Next(); closingToken.Value != ";" || !ok {
-      panic("Invalid token: expectd ; got " + closingToken.Value)
-    }
-	}
-}
-
-func parseProgramEnd(iterator *scanner.TokenIterator) {
-	if token, ok := iterator.Next(); !ok || token.Category != "term" || token.Value != "end" {
-		panic("Invalid program header")
-	}
-
-	if token, ok := iterator.Next(); !ok || token.Category != "term" || token.Value != "." {
-		panic("Invalid program header")
-	}
-
-  generator.GenerateProgramEnd(fileWriter)
-}
-
-func parseOperand(operand *scanner.Token) {
-	if operand.Category == "ident" {
-		if ok := validateIdentifier(operand.Value); !ok {
-			panic("Invalid identifier: " + operand.Value)
+		if !sym.IsDefined {
+			return scanner.Token{}, NewParserError("Undefined symbol: "+token.Value, token)
 		}
-    modularizeToken(operand);
-    if symbolTable[operand.Value] != "integer" {
-      panic("Invalid identifier type: " + operand.Value)
-    }
-	} else if operand.Category != "number" {
-		panic("Invalid operand, expected number")
+		return token, nil
+	case "number":
+		return token, nil
+	default:
+		return scanner.Token{}, NewParserError("Expected identifier or number found "+token.Category, token)
 	}
 }
 
-func parseIdentifier(ident *scanner.Token) {
-	if ok := validateIdentifier(ident.Value); !ok || ident.Category != "ident" {
-		panic("Invalid identifier: " + ident.Value)
+func parseVariable(iterator *scanner.TokenIterator) (*VariableDefintion, error) {
+	token, err := iterator.Next()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return nil, NewParserError("Expected identifier", token)
 	}
-  modularizeToken(ident)
+	if token.Category != "ident" {
+		return nil, NewParserError("Expected identifier found "+token.Value, token)
+	}
+
+	_, isDuplicate := symbolTable[token.Value]
+	if isDuplicate {
+		return nil, NewParserError("Duplicate identifier "+token.Value, token)
+	}
+	variableDefinition := &VariableDefintion{
+		Name:   modularizeIdentifer(token.Value),
+		Symbol: &Symbol{"unknown", false, ""},
+	}
+	return variableDefinition, nil
 }
 
-func validateIdentifier(identifier string) bool {
-	_, ok := symbolTable[programName+"_"+identifier]
-	return ok
-}
-
-func getVariableFromToken(token *scanner.Token) string {
-	return programName + "_" + token.Value
-}
-
-// TODO: Remove this, it is a bad idea
-func modularizeToken(token *scanner.Token) {
-  token.Value = programName + "_" + token.Value
+func modularizeIdentifer(ident string) string {
+	return moduleName + "_" + ident
 }
