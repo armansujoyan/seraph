@@ -8,30 +8,30 @@ import (
 
 func AssembleExecutable(src string) error {
 	name := strings.Split(src, ".")[0]
+  output := name + ".o"
+  input := name + ".s"
 
-	assembleCmd := exec.Command("as", "-o", name+".o", name+".s")
-  _, err := assembleCmd.Output()
-  if err != nil {
-    return err
-  }
+	assembleCmd := exec.Command("as", "-o", output, input)
+	_, err := assembleCmd.Output()
+	if err != nil {
+		return err
+	}
 
-	linkCmd := exec.Command("ld", "-o", name, name+".o")
-  _, err = linkCmd.Output()
-  if err != nil {
-    return err
-  }
+	linkCmd := exec.Command("ld", "-o", name, output)
+	_, err = linkCmd.Output()
+	if err != nil {
+		return err
+	}
 
-  // TODO: This will change to include custom names
-  // based on input file name
-  err = os.Remove("./out.s")
-  if err != nil {
-    return err
-  }
+	err = os.Remove("./" + input)
+	if err != nil {
+		return err
+	}
 
-  err = os.Remove("./out.o")
-  if err != nil {
-    return err
-  }
+	err = os.Remove("./" + output)
+	if err != nil {
+		return err
+	}
 
-  return nil
+	return nil
 }
