@@ -76,10 +76,16 @@ func Parse(iterator *scanner.TokenIterator) (string, error) {
 		if err != nil || nextToken.IsEqual(scanner.EndToken) {
 			break
 		}
-		parseStatementSequence(iterator)
+    err = parseStatementSequence(iterator)
+    if err != nil {
+      return "", err
+    }
 	}
 
-	parseProgramEnd(iterator)
+  err = parseProgramEnd(iterator)
+  if err != nil {
+    return "", err
+  }
 
 	return moduleName, nil
 }
@@ -145,10 +151,10 @@ func parseVariableDefinitions(iterator *scanner.TokenIterator) error {
 func parseVariableSequence(iterator *scanner.TokenIterator) error {
 	variables := make([]*VariableDefintion, 0)
 	variable, err := parseVariable(iterator)
+  if err != nil {
+    return fmt.Errorf("Unable to define variable : %w", err)
+  }
 	variables = append(variables, variable)
-	if err != nil {
-		return fmt.Errorf("Unable to define variable : %w", err)
-	}
 
 	for {
 		token, err := iterator.ViewNext()
@@ -221,6 +227,7 @@ func parseStatementSequence(iterator *scanner.TokenIterator) error {
 	}
 
 	target := token
+  target.Value = modularizeIdentifer(target.Value)
 
 	token, err = iterator.Next()
 	if errors.Is(err, scanner.ErrExhaustedInput) {
@@ -232,6 +239,9 @@ func parseStatementSequence(iterator *scanner.TokenIterator) error {
 	}
 
 	operand, err := parseOperand(iterator)
+  if err != nil {
+    return err
+  }
 
 	token, err = iterator.Next()
 	if errors.Is(err, scanner.ErrExhaustedInput) {
@@ -240,6 +250,8 @@ func parseStatementSequence(iterator *scanner.TokenIterator) error {
 
 	if token.IsEqual(scanner.SemicolonToken) {
 		generator.GenerateStatement(&target, &operand)
+		symbolTable[target.Value].IsDefined = true
+		symbolTable[target.Value].Value =  operand.Value
 		return nil
 	}
 
@@ -252,6 +264,9 @@ func parseStatementSequence(iterator *scanner.TokenIterator) error {
 
 	// Parse complex
 	operand_two, err := parseOperand(iterator)
+  if err != nil {
+    return err
+  }
 	generator.GenerateComplexStatement(&target, &operand, &operator, &operand_two)
 
 	// Scan last semicolon
@@ -260,10 +275,12 @@ func parseStatementSequence(iterator *scanner.TokenIterator) error {
 		return NewParserError("Expected ';'", token)
 	}
 
-	if token.IsEqual(scanner.SemicolonToken) {
+	if !token.IsEqual(scanner.SemicolonToken) {
 		return NewParserError("Expected ';' found "+token.Value, token)
 	}
 
+	symbolTable[target.Value].IsDefined = true
+	symbolTable[target.Value].Value = operand.Value
 	return nil
 }
 
@@ -306,6 +323,7 @@ func parseOperand(iterator *scanner.TokenIterator) (scanner.Token, error) {
 		if !sym.IsDefined {
 			return scanner.Token{}, NewParserError("Undefined symbol: "+token.Value, token)
 		}
+    token.Value = modularizeIdentifer(token.Value)
 		return token, nil
 	case "number":
 		return token, nil
