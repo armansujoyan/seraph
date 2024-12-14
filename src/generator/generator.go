@@ -21,13 +21,13 @@ func Init(name string) {
 
 func GenerateGlobalVarSection() {
 	writer.Write([]byte(".section .bss\n"))
-  writer.Flush()
+	writer.Flush()
 }
 
 func GenerateTextSection() {
 	writer.Write([]byte(".section .text\n"))
 	writer.Write([]byte("  .globl _start\n_start:\n"))
-  writer.Flush()
+	writer.Flush()
 }
 
 func GenerateVariables(variables map[string]string) {
