@@ -20,6 +20,7 @@ var (
 		"end":     {},
 		"integer": {},
 		"string":  {},
+		"write":   {},
 		",":       {},
 		"+":       {},
 		"-":       {},
@@ -118,9 +119,9 @@ func readRune(reader *bufio.Reader) (rune, error) {
 	if err != nil {
 		return 0, err
 	}
-  column++
+	column++
 	if rune == '\n' {
-    row++
+		row++
 	}
 	return rune, nil
 }

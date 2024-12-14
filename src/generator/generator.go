@@ -2,6 +2,7 @@ package generator
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"seraph/src/allocator"
 	"seraph/src/common"
@@ -88,5 +89,14 @@ func GenerateProgramEnd() {
   syscall
   `
 	writer.Write([]byte(returnStatement))
+	writer.Flush()
+}
+
+func GenerateWriteCall(identifier string, bytes int) {
+	writeCall := "  mov $1, %rax\n  mov $1, %rdi\n "
+	writeCall += fmt.Sprintf("  mov %s, %%rsi\n", identifier)
+	writeCall += fmt.Sprintf("  mov $%d, %%rdx\n", bytes)
+	writeCall += "  syscall\n"
+	writer.Write([]byte(writeCall))
 	writer.Flush()
 }
