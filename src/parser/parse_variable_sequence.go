@@ -9,7 +9,7 @@ import (
 
 func parseVariableSequence(iterator *scanner.TokenIterator) error {
 	variables := make([]*VariableDefintion, 0)
-	variable, err := parseVariable(iterator)
+	variable, err := parseVariableDefinition(iterator)
 	if err != nil {
 		return fmt.Errorf("Unable to define variable : %w", err)
 	}
@@ -26,7 +26,7 @@ func parseVariableSequence(iterator *scanner.TokenIterator) error {
 		}
 
 		iterator.Next()
-		variable, err = parseVariable(iterator)
+		variable, err = parseVariableDefinition(iterator)
 		variables = append(variables, variable)
 		if err != nil {
 			return fmt.Errorf("Unable to define variable : %w", err)

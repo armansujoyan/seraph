@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"seraph/src/allocator"
 	"seraph/src/generator"
 	"seraph/src/scanner"
 )
@@ -16,6 +17,7 @@ var (
 	moduleName   string
 	mathOperands = []scanner.Token{scanner.PlusToken, scanner.MinusToken}
 	symbolTable  = make(SymbolTable)
+  registerAllocator = allocator.NewAllocator(allocator.RegistersX86[:])
 )
 
 // TODO: Maybe the iterator interface has to be different

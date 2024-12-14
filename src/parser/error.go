@@ -12,7 +12,7 @@ type ParserError struct {
 }
 
 func (err *ParserError) Error() string {
-	return fmt.Sprintf("Parser error: %s at %d, %d", err.message, err.row, err.column)
+	return fmt.Sprintf("Parser error: %s at line %d, character %d", err.message, err.row, err.column)
 }
 
 func NewParserError(msg string, token scanner.Token) error {

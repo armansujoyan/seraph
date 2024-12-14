@@ -4,15 +4,6 @@ import (
 	"errors"
 )
 
-type Register struct {
-	isFree bool
-	name   string
-}
-
-func (register *Register) setRegisterStatus(status bool) {
-	register.isFree = status
-}
-
 type Allocator struct {
 	registers []*Register
 }
@@ -22,7 +13,7 @@ func NewAllocator(names []string) (*Allocator) {
   for i, name := range names {
     registers[i] = &Register{
       name: name,
-      isFree: false,
+      isFree: true,
     }
   }
   return &Allocator{registers: registers}
@@ -42,6 +33,7 @@ func (allocator *Allocator) Release(register *Register) error {
 	for _, reg := range allocator.registers {
 		if reg == register {
 			reg.setRegisterStatus(true)
+      reg.SetIsLoaded(false)
 			return nil
 		}
 	}

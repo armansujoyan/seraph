@@ -3,8 +3,8 @@ package generator
 import (
 	"bufio"
 	"os"
-	"seraph/src/scanner"
-	"strings"
+	"seraph/src/allocator"
+	"seraph/src/common"
 )
 
 var (
@@ -38,22 +38,46 @@ func GenerateVariables(variables map[string]string) {
 	writer.Flush()
 }
 
-// TODO: Refactor
-func GenerateComplexStatement(targetIdent, operand, operator, operandTwo *scanner.Token) {
-	loadOperandOne := move(operand, "eax")
-	loadOperandTwo := move(operandTwo, "ebx")
-	executeOperation := performArithmeticOperation("eax", "ebx", operator)
-	storeOperaion := storeRegister("ebx", targetIdent.Value)
-	statement := []string{loadOperandOne, loadOperandTwo, executeOperation, storeOperaion, "\n"}
-	writer.Write([]byte(strings.Join(statement, "\n")))
+func GenerateArithmeticStatement(reg1, reg2 *allocator.Register, op *common.Operator, al *allocator.Allocator) *allocator.Register {
+	if !reg1.GetIsLoaded() {
+		LoadRegister(reg1)
+	}
+	if !reg2.GetIsLoaded() {
+		LoadRegister(reg2)
+	}
+	generateArithmeticOperation(reg1, reg2, op)
+	writer.Flush()
+	al.Release(reg1)
+	return reg2
+}
+
+func generateArithmeticOperation(reg1, reg2 *allocator.Register, op *common.Operator) {
+	switch op.Value {
+	case "+":
+		writer.Write([]byte("  addq %" + reg1.GetName() + ", %" + reg2.GetName() + "\n"))
+	case "-":
+		writer.Write([]byte("  subq %" + reg1.GetName() + ", %" + reg2.GetName() + "\n"))
+	default:
+		writer.Write([]byte("  imulq %" + reg1.GetName() + ", %" + reg2.GetName() + "\n"))
+	}
+}
+
+func LoadRegister(reg *allocator.Register) {
+	statement := "  movq "
+	if reg.GetType() == allocator.VariableRegister {
+		statement += reg.GetContent()
+	} else {
+		statement += "$" + reg.GetContent()
+	}
+	reg.SetIsLoaded(true)
+	statement += ", %" + reg.GetName() + "\n"
+	writer.Write([]byte(statement))
 	writer.Flush()
 }
 
-func GenerateStatement(targetIdent, operand *scanner.Token) {
-	loadOperand := move(operand, "eax")
-	storeOperation := storeRegister("eax", targetIdent.Value)
-	statement := []string{loadOperand, storeOperation, "\n"}
-	writer.Write([]byte(strings.Join(statement, "\n")))
+func StoreRegister(target string, reg *allocator.Register) {
+	statement := "  movq %" + reg.GetName() + ", " + target + "\n\n"
+	writer.Write([]byte(statement))
 	writer.Flush()
 }
 
@@ -65,25 +89,4 @@ func GenerateProgramEnd() {
   `
 	writer.Write([]byte(returnStatement))
 	writer.Flush()
-}
-
-// TODO: Generalize to handle reg to reg?
-func move(loc1 *scanner.Token, loc2 string) string {
-	t1 := "$" + loc1.Value
-	if loc1.Category != "number" {
-		t1 = loc1.Value
-	}
-	return "  movl " + t1 + ", %" + loc2
-}
-
-func performArithmeticOperation(reg1, reg2 string, operator *scanner.Token) string {
-	if operator.Value == "+" {
-		return "  addl %" + reg1 + ", %" + reg2
-	} else {
-		return "  subl %" + reg1 + ", %" + reg2
-	}
-}
-
-func storeRegister(reg, variable string) string {
-	return "  movl %" + reg + ", " + variable
 }
