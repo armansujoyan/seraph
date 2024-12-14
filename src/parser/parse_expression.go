@@ -10,7 +10,7 @@ import (
 	"seraph/src/utils"
 )
 
-var supportedOperands = []string{"+", "-", "*"}
+var supportedOperands = []string{"+", "-", "*", "(", ")"}
 
 func parseExpression(target *scanner.Token, iterator *scanner.TokenIterator) error {
 	operatorStack := utils.NewStack[*common.Operator]()
@@ -53,6 +53,21 @@ func parseExpression(target *scanner.Token, iterator *scanner.TokenIterator) err
 			if err != nil {
 				return fmt.Errorf("Can't parse expression: %w", err)
 			}
+      if operator.Value == "(" {
+        operatorStack.Push(operator)
+        break;
+      }
+      if operator.Value == ")" {
+        for operatorStack.Peek().Value != "(" {
+          topOperator := operatorStack.Pop()
+          firstOperand := operandStack.Pop()
+          secondOperand := operandStack.Pop()
+          newOperand := generator.GenerateArithmeticStatement(firstOperand, secondOperand, topOperator, registerAllocator)
+          operandStack.Push(newOperand)
+        }
+        operatorStack.Pop();
+        break;
+      }
 			if operatorStack.Peek() != nil && operator.Precedence <= operatorStack.Peek().Precedence {
 				topOperator := operatorStack.Pop()
 				firstOperand := operandStack.Pop()
@@ -62,7 +77,7 @@ func parseExpression(target *scanner.Token, iterator *scanner.TokenIterator) err
 			}
 			operatorStack.Push(operator)
 		default:
-			return errors.New("Invalid token. Expected operand, number or variable.")
+      return errors.New("Invalid token. Expected operand, number, variable or ';', received: " + token.Value)
 		}
 	}
 

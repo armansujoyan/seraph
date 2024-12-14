@@ -6,6 +6,8 @@ var opToPrecedence = map[string]int{
 	"+": 10,
 	"-": 10,
 	"*": 20,
+  "(": 0,
+  ")": 0,
 }
 
 type Operator struct {
