@@ -59,21 +59,13 @@ func parseExpression(target *scanner.Token, iterator *scanner.TokenIterator) err
       }
       if operator.Value == ")" {
         for operatorStack.Peek().Value != "(" {
-          topOperator := operatorStack.Pop()
-          firstOperand := operandStack.Pop()
-          secondOperand := operandStack.Pop()
-          newOperand := generator.GenerateArithmeticStatement(firstOperand, secondOperand, topOperator, registerAllocator)
-          operandStack.Push(newOperand)
+          evaluateSingleOperand(operatorStack, operandStack)
         }
         operatorStack.Pop();
         break;
       }
 			if operatorStack.Peek() != nil && operator.Precedence <= operatorStack.Peek().Precedence {
-				topOperator := operatorStack.Pop()
-				firstOperand := operandStack.Pop()
-				secondOperand := operandStack.Pop()
-				newOperand := generator.GenerateArithmeticStatement(firstOperand, secondOperand, topOperator, registerAllocator)
-				operandStack.Push(newOperand)
+        evaluateSingleOperand(operatorStack, operandStack)
 			}
 			operatorStack.Push(operator)
 		default:
@@ -89,11 +81,7 @@ func parseExpression(target *scanner.Token, iterator *scanner.TokenIterator) err
 
 func exhaustStack(operators *utils.Stack[*common.Operator], operands *utils.Stack[*allocator.Register]) *allocator.Register {
 	for operators.Peek() != nil {
-				topOperator := operators.Pop()
-				firstOperand := operands.Pop()
-				secondOperand := operands.Pop()
-				newOperand := generator.GenerateArithmeticStatement(firstOperand, secondOperand, topOperator, registerAllocator)
-				operands.Push(newOperand)
+    evaluateSingleOperand(operators, operands)
 	}
 
 	register := operands.Pop()
@@ -102,4 +90,12 @@ func exhaustStack(operators *utils.Stack[*common.Operator], operands *utils.Stac
 	}
 
 	return register
+}
+
+func evaluateSingleOperand(operators *utils.Stack[*common.Operator], operands *utils.Stack[*allocator.Register]) {
+    topOperator := operators.Pop()
+    firstOperand := operands.Pop()
+    secondOperand := operands.Pop()
+    newOperand := generator.GenerateArithmeticStatement(firstOperand, secondOperand, topOperator, registerAllocator)
+    operands.Push(newOperand)
 }
