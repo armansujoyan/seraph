@@ -102,7 +102,7 @@ func GenerateProgramEnd() {
 
 func GenerateWriteCall(identifier string, bytes int) {
   writeCall := fmt.Sprintf("  mov %s, %%rsi\n", identifier)
-  writeCall += "  mov $digitfmt %rdi\n"
+  writeCall += "  mov $digitfmt, %rdi\n"
 	writeCall += "  xor %rax, %rax\n"
 	writeCall += "  call printf\n"
 	writer.Write([]byte(writeCall))
