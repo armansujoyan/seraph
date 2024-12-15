@@ -26,7 +26,7 @@ func Init(name string) {
 
 func GenerateGlobalVarSection() {
 	writer.Write([]byte(".section .rodata\n"))
-  writer.Write([]byte("fmt:\n"))
+  writer.Write([]byte("digitfmt:\n"))
   writer.Write([]byte("  .asciz \"%d\\n\"\n"))
 	writer.Write([]byte(".section .bss\n"))
 	writer.Flush()
@@ -102,7 +102,7 @@ func GenerateProgramEnd() {
 
 func GenerateWriteCall(identifier string, bytes int) {
   writeCall := fmt.Sprintf("  mov %s, %%rsi\n", identifier)
-  writeCall += "  mov $fmt, %rdi\n"
+  writeCall += "  mov $digitfmt %rdi\n"
 	writeCall += "  xor %rax, %rax\n"
 	writeCall += "  call printf\n"
 	writer.Write([]byte(writeCall))
