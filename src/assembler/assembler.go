@@ -17,7 +17,7 @@ func AssembleExecutable(src string) error {
 		return err
 	}
 
-	linkCmd := exec.Command("ld", "-o", name, output, "-lc", "-dynamic-linker /lib64/ld-linux-x86-64.so.2")
+	linkCmd := exec.Command("ld", "-o", name, output, "-lc", "-dynamic-linker", "/lib64/ld-linux-x86-64.so.2")
 	_, err = linkCmd.Output()
 	if err != nil {
 		return err
