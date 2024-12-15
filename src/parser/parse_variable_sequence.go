@@ -47,12 +47,13 @@ func parseVariableSequence(iterator *scanner.TokenIterator) error {
 		return NewParserError("Expected variable type declaration", token)
 	}
 
-	if !token.IsEqual(scanner.IntegerToken) || token.IsEqual(scanner.StringToken) {
+	if !token.IsEqual(scanner.IntegerToken) && !token.IsEqual(scanner.StringToken) {
 		return NewParserError("Expected 'integer' or 'string' found "+token.Value, token)
 	}
 
 	variablesTypeMap := make(map[string]string)
 	for _, varDef := range variables {
+    varDef.Symbol.TypeDef = token.Value
 		symbolTable[varDef.Name] = varDef.Symbol
 		variablesTypeMap[varDef.Name] = varDef.Symbol.TypeDef
 	}

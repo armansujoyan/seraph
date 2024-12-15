@@ -10,6 +10,10 @@ import (
 
 var (
 	writer *bufio.Writer
+  typeSizeMap = map[string]int{
+    "string": 128,
+    "integer": 8,
+  }
 )
 
 func Init(name string) {
@@ -35,8 +39,9 @@ func GenerateTextSection() {
 }
 
 func GenerateVariables(variables map[string]string) {
-	for variable := range variables {
-		declaration := "  .lcomm " + variable + ", 4\n"
+	for variable, varType := range variables {
+    size := typeSizeMap[varType]
+		declaration := fmt.Sprintf("  .lcomm %s, %d\n", variable, size)
 		writer.Write([]byte(declaration))
 	}
 	writer.Flush()
