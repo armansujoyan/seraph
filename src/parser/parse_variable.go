@@ -15,7 +15,7 @@ func parseVariableDefinition(iterator *scanner.TokenIterator) (*VariableDefintio
 		return nil, NewParserError("Expected identifier found "+token.Value, token)
 	}
 
-	if symbolTable.Exists(token.Value) {
+	if symbolTable.Exists(modularizeIdentifer(token.Value)) {
 		return nil, NewParserError("Duplicate identifier "+token.Value, token)
 	}
 

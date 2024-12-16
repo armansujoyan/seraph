@@ -14,6 +14,7 @@ func parseVariableSequence(iterator *scanner.TokenIterator) error {
 		return fmt.Errorf("Unable to define variable : %w", err)
 	}
 	variables = append(variables, variable)
+	symbolTable[variable.Name] = variable.Symbol
 
 	for {
 		token, err := iterator.ViewNext()
@@ -28,6 +29,7 @@ func parseVariableSequence(iterator *scanner.TokenIterator) error {
 		iterator.Next()
 		variable, err = parseVariableDefinition(iterator)
 		variables = append(variables, variable)
+
 		if err != nil {
 			return fmt.Errorf("Unable to define variable : %w", err)
 		}

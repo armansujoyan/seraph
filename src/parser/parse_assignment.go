@@ -28,19 +28,19 @@ func parseAssignment(iterator *scanner.TokenIterator) error {
 	}
 
 	if !token.IsEqual(scanner.AssignmentToken) {
-		return NewParserError("Expected identifier found "+token.Value, token)
+		return NewParserError("Expected ':=' found "+token.Value, token)
 	}
 
-  token, err = iterator.ViewNext()
+	token, err = iterator.ViewNext()
 	if errors.Is(err, scanner.ErrExhaustedInput) {
 		return NewParserError("Expected ':='", token)
 	}
 
-  if token.IsEqual(scanner.QuotationMarkToken) {
-    err = parseString(&target, iterator)
-  } else {
-    err = parseExpression(&target, iterator)
-  }
+	if token.IsEqual(scanner.QuotationMarkToken) {
+		err = parseString(&target, iterator)
+	} else {
+		err = parseExpression(&target, iterator)
+	}
 
 	if err != nil {
 		return NewParserError(err.Error(), token)
