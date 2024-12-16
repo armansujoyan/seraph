@@ -11,8 +11,8 @@ import (
 var (
 	err                 error
 	max_identifier_size = 512
-	row                 = 0
-	column              = 0
+	row                 = 1
+	column              = 1
 	Term                = map[string]struct{}{
 		"program": {},
 		"var":     {},
@@ -135,6 +135,7 @@ func readRune(reader *bufio.Reader) (rune, error) {
 	}
 	column++
 	if rune == '\n' {
+    column = 0;
 		row++
 	}
 	return rune, nil
