@@ -122,5 +122,5 @@ func GenerateStaticSection() {
 }
 
 func GenerateStaticString(identifier string, value string) {
-  utils.PrependToFile(fileName + ".s", fmt.Sprintf("%s:\n  .asciz \"%s\"\n", identifier, value))
+  utils.PrependToFile(fileName + ".s", fmt.Sprintf("%s:\n  .asciz \"%s\\n\"\n", identifier, value))
 }
