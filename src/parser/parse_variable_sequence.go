@@ -58,6 +58,10 @@ func parseVariableSequence(iterator *scanner.TokenIterator) error {
 		variablesTypeMap[varDef.Name] = varDef.Symbol.TypeDef
 	}
 
+  if !token.IsEqual(scanner.StringToken) {
+    generator.GenerateVariables(variablesTypeMap)
+  }
+
 	token, err = iterator.Next()
 	if errors.Is(err, scanner.ErrExhaustedInput) {
 		return NewParserError("Expected ';'", token)
@@ -67,6 +71,5 @@ func parseVariableSequence(iterator *scanner.TokenIterator) error {
 		return NewParserError("Expected ';' found "+token.Value, token)
 	}
 
-	generator.GenerateVariables(variablesTypeMap)
 	return nil
 }

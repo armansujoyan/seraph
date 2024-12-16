@@ -21,6 +21,7 @@ var (
 		"integer": {},
 		"string":  {},
 		"write":   {},
+		"\"":      {},
 		",":       {},
 		"+":       {},
 		"-":       {},
@@ -66,6 +67,19 @@ func Scan(reader *bufio.Reader) ([]Token, error) {
 			} else {
 				output = append(output, Token{"ident", lexem, row, column})
 			}
+		}
+
+		if rune == '"' {
+			output = append(output, Token{"term", "\"", row, column})
+      rune, err = readRune(reader)
+      str := ""
+			for rune != '"' {
+        str += string(rune)
+        rune, err = readRune(reader)
+			}
+			output = append(output, Token{"string", str, row, column})
+			output = append(output, Token{"term", "\"", row, column})
+			continue
 		}
 
 		if utils.IsDigit(rune) {

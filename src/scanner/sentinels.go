@@ -18,4 +18,5 @@ var (
 	OpenParenthesisToken  = Token{Category: "term", Value: "("}
 	CloseParenthesisToken = Token{Category: "term", Value: ")"}
 	WriteToken            = Token{Category: "term", Value: "write"}
+	QuotationMarkToken    = Token{Category: "term", Value: "\""}
 )

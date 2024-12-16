@@ -66,6 +66,13 @@ func Parse(iterator *scanner.TokenIterator) (string, error) {
     return "", err
   }
 
+  for varName, symbol := range symbolTable {
+    if symbol.TypeDef == "string" && symbol.IsDefined {
+      generator.GenerateStaticString(varName, symbol.Value);
+    }
+  }
+  generator.GenerateStaticSection()
+
 	return moduleName, nil
 }
 

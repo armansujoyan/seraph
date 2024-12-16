@@ -31,7 +31,17 @@ func parseAssignment(iterator *scanner.TokenIterator) error {
 		return NewParserError("Expected identifier found "+token.Value, token)
 	}
 
-	err = parseExpression(&target, iterator)
+  token, err = iterator.ViewNext()
+	if errors.Is(err, scanner.ErrExhaustedInput) {
+		return NewParserError("Expected ':='", token)
+	}
+
+  if token.IsEqual(scanner.QuotationMarkToken) {
+    err = parseString(&target, iterator)
+  } else {
+    err = parseExpression(&target, iterator)
+  }
+
 	if err != nil {
 		return NewParserError(err.Error(), token)
 	}

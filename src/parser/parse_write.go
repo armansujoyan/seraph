@@ -34,6 +34,7 @@ func parseWrite(iterator *scanner.TokenIterator) error {
 		return NewParserError("Unknown identifier: "+token.Value, token)
 	}
   identifier := modularizeIdentifer(token.Value)
+  idType := symbolTable[identifier].TypeDef
 
 	token, err = iterator.Next()
 	if errors.Is(err, scanner.ErrExhaustedInput) {
@@ -53,7 +54,7 @@ func parseWrite(iterator *scanner.TokenIterator) error {
 		return NewParserError("Expected ';' found "+token.Value, token)
 	}
 
-  generator.GenerateWriteCall(identifier, 4)
+  generator.GenerateWriteCall(identifier, idType)
 
   return nil
 }

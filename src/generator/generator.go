@@ -6,6 +6,7 @@ import (
 	"os"
 	"seraph/src/allocator"
 	"seraph/src/common"
+	"seraph/src/utils"
 )
 
 var (
@@ -14,10 +15,12 @@ var (
     "string": 128,
     "integer": 8,
   }
+  fileName string
 )
 
 func Init(name string) {
 	file, err := os.Create("./" + name + ".s")
+  fileName = name
 	if err != nil {
 		panic("Unable to create file")
 	}
@@ -25,9 +28,6 @@ func Init(name string) {
 }
 
 func GenerateGlobalVarSection() {
-	writer.Write([]byte(".section .rodata\n"))
-  writer.Write([]byte("digitfmt:\n"))
-  writer.Write([]byte("  .asciz \"%d\\n\"\n"))
 	writer.Write([]byte(".section .bss\n"))
 	writer.Flush()
 }
@@ -100,11 +100,27 @@ func GenerateProgramEnd() {
 	writer.Flush()
 }
 
-func GenerateWriteCall(identifier string, bytes int) {
-  writeCall := fmt.Sprintf("  mov %s, %%rsi\n", identifier)
-  writeCall += "  mov $digitfmt, %rdi\n"
+func GenerateWriteCall(identifier string, idType string) {
+  var writeCall string
+  if idType == "string" {
+		writeCall += fmt.Sprintf("  mov $%s, %%rdi\n", identifier)
+  } else {
+    writeCall += fmt.Sprintf("  mov %s, %%rsi\n", identifier)
+    writeCall += "  mov $digitfmt, %rdi\n"
+  }
 	writeCall += "  xor %rax, %rax\n"
 	writeCall += "  call printf\n"
 	writer.Write([]byte(writeCall))
 	writer.Flush()
+}
+
+func GenerateStaticSection() {
+  section := ".section .rodata\n"
+  section += "digitfmt:\n"
+  section += "  .asciz \"%d\\n\"\n"
+  utils.PrependToFile(fileName + ".s", section)
+}
+
+func GenerateStaticString(identifier string, value string) {
+  utils.PrependToFile(fileName + ".s", fmt.Sprintf("%s:\n  .asciz \"%s\"\n", identifier, value))
 }
